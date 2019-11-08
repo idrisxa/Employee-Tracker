@@ -16,8 +16,7 @@ app.use(express.json());
 // all our reservations in this
 app.use(express.static('public'));
 
-departmentList = [];
-roleList = [];
+
 
 class Database {
     constructor( config ) {
@@ -75,16 +74,25 @@ const db = new Database({
 //    afterConnection();
 // })
 async function main(){
-    //let result = await db.query( "SELECT * FROM employees" );
-    // mytest();
-    // var mytest = function(){
-    //     return new Promise( function(resolve,reject){
-    //         console.log( 'this is a test' );
-    //         resolve( "secret result" );
-    //     })
-    // }
-    // let myresult = await mytest;
-    // console.log( `myresult=${myresult}` );
+
+departmentList = [];
+roleList = [];
+employeeList = [];
+managerList = ["no manager"];
+let Empdept_id;
+let Emp_id;
+
+    let employees = await db.query("SELECT * FROM employee");
+        for (i = 0; i<employees.length; i++){
+            employeeList.push(`${employees[i].firstName} ${employees[i].lastName}`);
+            //console.log(employeeList);
+        }
+
+        let departments = await db.query("SELECT * FROM department");
+        for (i = 0; i<departments.length; i++){
+            departmentList.push(departments[i].name);
+        }
+
 
     let response = await inquirer
             .prompt([
@@ -95,7 +103,7 @@ async function main(){
                         choices:[
                             "Add departments, roles, employees",
                             "View departments, roles, employees",
-                            "Update employee roles",
+                            "Update employee information",
                             "Delete departments, roles, employees",
                             ]
                     },
@@ -129,19 +137,22 @@ async function main(){
                                 ]
                         
                     },
-                    {
-                        when: input => {
-                            return input.task == "Update employee roles"
-                                        },
-                            type: "list",
-                            name: "update",
-                            message: "What would you like to Update?",
-                            choices:[
-                                "Update employee role",
-                                "Update employee manager",
-                                ]
+                    // {
+                    //     when: input => {
+                    //         return input.task == "Update employee information"
+                    //                     },
+
+
+                                        
+                    //         type: "list",
+                    //         name: "update",
+                    //         message: "What would you like to Update?",
+                    //         choices:[
+                    //             "Update employee information",
+                    //             "Update employee manager",
+                    //             ]
                         
-                    },
+                    // },
                     {
                         when: input => {
                             return input.task == "Delete departments, roles, employees"
@@ -172,14 +183,15 @@ async function main(){
                 console.log("New department added");
                 let addDepartment = await db.query("SELECT * FROM department");
                 console.table(addDepartment);
+                main();
             })
     }
     else if (response.add == "Add roles"){
-        console.log("prepared to add roles");
-        let departments = await db.query("SELECT name FROM department");
-        for (i = 0; i<departments.length; i++){
-            departmentList.push(departments[i].name);
-        }
+        // console.log("prepared to add roles");
+        // let departments = await db.query("SELECT name FROM department");
+        // for (i = 0; i<departments.length; i++){
+        //     departmentList.push(departments[i].name);
+        // }
         inquirer
         .prompt([
                 {
@@ -205,86 +217,241 @@ async function main(){
                 console.log("New role added");
                 let addRole = await db.query("SELECT * FROM role");
                 console.table(addRole);
+                main();
             });
 
     }
     else if (response.add == "Add employees"){
-        // console.log("prepared to add employees");
-        // let departments = await db.query("SELECT name FROM department");
+        console.log("prepared to add employees");
+        // let departments = await db.query("SELECT name, id FROM department");
         // for (i = 0; i<departments.length; i++){
         //     departmentList.push(departments[i].name);
         // }
-        // let roles = await db.query("SELECT title FROM role");
-        // for (i = 0; i<roles.length; i++){
-        //     roleList.push(roles[i].title);
-        // }
-        // inquirer
-        // .prompt([
-        //         {
-        //             type: "list",
-        //             message: "Please select department this employee belongs to",
-        //             name: "addEmployee_department",
-        //             choices: departmentList
-        //         },
-        //         {
-        //             type: "list",
-        //             message: "Please select employee role",
-        //             name: "addEmployee_role",
-        //             choices: roleList
-        //         },
-        //         {
-        //             type: "input",
-        //             message: "Please enter employee First Name",
-        //             name: "addEmployee_firstName",
-        //         },
-        //         {
-        //             type: "input",
-        //             message: "Please enter employee Last Name",
-        //             name: "addEmployee_lastName",
-        //         }
-        //     ]).then(async (response)=>{
-        //         let role_id = await db.query(`SELECT id FROM role WHERE title = '${response.addEmployee_role}'`);
-        //         let manager_id = await db.query(`SELECT employee.id,
-        //         FROM employee
-        //         INNER JOIN role 
-        //         ON employee.role_id = role.id
-        //         WHERE title = "Manager";`);
-        //         //console.log(dept_id[0].id);
-        //         await db.query(`INSERT INTO employee (firstName, lastName, role_id, manager_id) VALUES ('${response.addEmployee_firstName}', '${response.addEmployee_lastName}', ${role_id[0].id}, ${dept_id[0].id})`);
-        //         console.log("New role added");
-        //         let addRole = await db.query("SELECT * FROM role");
-        //         console.table(addRole);
-        //     });
+        
+        await inquirer
+        .prompt([
+                {
+                    type: "list",
+                    message: "Please select department this employee belongs to",
+                    name: "addEmployee_department",
+                    choices: departmentList
+                }
+            ]).then(async (response)=>{
+                let roles = await db.query(`SELECT title FROM role INNER JOIN department ON role.department_id = department.id WHERE department.name = '${response.addEmployee_department}' `);
+                Empdept_id = await db.query(`SELECT id FROM department WHERE name = '${response.addEmployee_department}'`);
+                for (i = 0; i<roles.length; i++){
+                roleList.push(roles[i].title);
+                }
+                //console.log(Empdept_id[0].id);
+
+
+                let managersInDept = await db.query(`SELECT employee.firstName, employee.lastName FROM employee INNER JOIN role ON employee.role_id = role.id WHERE title = "Manager" AND department_id = ${Empdept_id[0].id};`);
+
+    
+                for (i = 0; i<managersInDept.length; i++){
+                    managerList.unshift(`${managersInDept[i].firstName} ${managersInDept[i].lastName}`);
+                    //console.log(managerList);
+                }
+            })
+
+        await inquirer
+        .prompt([
+                {
+                    type: "list",
+                    message: "Please select Manager for new Employee from Managers available in selected department or select No Manager",
+                    name: "addEmployee_manager",
+                    choices: managerList
+                },
+                {
+                    type: "list",
+                    message: "Please select employee role",
+                    name: "addEmployee_role",
+                    choices: roleList
+                },
+                {
+                    type: "input",
+                    message: "Please enter employee First Name",
+                    name: "addEmployee_firstName",
+                },
+                {
+                    type: "input",
+                    message: "Please enter employee Last Name",
+                    name: "addEmployee_lastName",
+                }
+            ]).then(async (response)=>{
+
+                
+                        let manager_firstName = response.addEmployee_manager.split(' ')[0];
+                        let manager_lastName = response.addEmployee_manager.split(' ')[1];
+                        //console.log(manager_lastName, manager_firstName);
+                        let manager_id = await db.query(`SELECT id FROM employee WHERE firstName = '${manager_firstName}' AND lastName = '${manager_lastName}' `);
+                        //console.log(manager_id[0].id);
+
+                        let role_id = await db.query(`SELECT id FROM role WHERE title = '${response.addEmployee_role}' AND department_id = ${Empdept_id[0].id}`);
+                        //console.log(role_id[0].id);
+                         await db.query(`INSERT INTO employee (firstName, lastName, role_id, manager_id) VALUES ('${response.addEmployee_firstName}', '${response.addEmployee_lastName}', ${role_id[0].id}, ${manager_id[0].id})`);
+                         console.log("New employee added");
+                         let addEmployee = await db.query("SELECT * FROM employee");
+                         console.table(addEmployee);
+                         main();
+
+
+
+                //console.log(response.addEmployee_lastName);
+                // await db.query(`INSERT INTO employee (firstName, lastName, role_id, manager_id) VALUES ('${response.addEmployee_firstName}', '${response.addEmployee_lastName}', ${role_id[0].id}, ${dept_id[0].id})`);
+                // console.log("New role added");
+                // let addRole = await db.query("SELECT * FROM role");
+                // console.table(addRole);
+            });
     }
 
     if (response.view == "View departments"){
         console.log("prepared to view department");
-        let departments = await db.query("SELECT * FROM department");
+        //let departments = await db.query("SELECT * FROM department");
         console.table(departments);
+        main();
     }
     else if (response.view == "View roles"){
         console.log("prepared to view roles");
         let roles = await db.query("SELECT * FROM role",);
         console.table(roles);
+        main();
     }
     else if (response.view == "View employees"){
         console.log("prepared to view employees");
-       let employees = await db.query("SELECT * FROM employee",);
+       //let employees = await db.query("SELECT * FROM employee",);
        console.table(employees);
+       main();
             
     }
     else if (response.view == "View employees by manager"){
         console.log("prepared to view employees by manager");
+        let mngrs = await db.query(`SELECT employee.firstName, employee.lastName FROM employee INNER JOIN role ON employee.role_id = role.id WHERE title = "Manager";`);
+
+                for (i = 0; i<mngrs.length; i++){
+                    managerList.unshift(`${mngrs[i].firstName} ${mngrs[i].lastName}`);
+                    //console.log(managerList);
+                }
+
+                await inquirer
+                .prompt([
+                {
+                    type: "list",
+                    message: "Which manager would you like to see employees under?",
+                    name: "viewEmployee_manager",
+                    choices: managerList
+                },
+            ]).then(async (response)=>{
+                        let manager_firstName = response.viewEmployee_manager.split(' ')[0];
+                        let manager_lastName = response.viewEmployee_manager.split(' ')[1];
+                        //console.log(manager_lastName, manager_firstName);
+                        let manager_id = await db.query(`SELECT id FROM employee WHERE firstName = '${manager_firstName}' AND lastName = '${manager_lastName}' `);
+                        let employeeByManager = await db.query(`SELECT * FROM employee WHERE manager_id = ${manager_id[0].id} `);
+                        console.table(employeeByManager);
+                        main();
+            })
+
     }
     else if (response.view == "View the total utilized budget of a department"){
         console.log("prepared to view the total utilized budget of a department");
+        // let departmnts = await db.query(`SELECT name FROM department`);
+
+        // for (i = 0; i<departmnts.length; i++){
+        //     departmentList.push(departmnts[i].name);
+        // }
+
+        // await inquirer
+        //         .prompt([
+        //         {
+        //             type: "list",
+        //             message: "Which departments utilized budget would you like to see?",
+        //             name: "viewDepartment_budget",
+        //             choices: departmentList
+        //         },
+        //     ])
+        main();
+
     }
 
-    if (response.update == "Update employee role"){
-        console.log("prepared to update employee role");
-    }
-    else if (response.update == "Update employee manager"){
-        console.log("prepared to update employee manager");
+    if (response.task == "Update employee information"){
+        console.log("prepared to update employee information");
+        // let employees = await db.query("SELECT firstName, lastName FROM employee");
+        // for (i = 0; i<employees.length; i++){
+        //     employeeList.push(`${employees[i].firstName} ${employees[i].lastName}`);
+        //     //console.log(employeeList);
+        // }
+
+        // let departments = await db.query("SELECT name FROM department");
+        // for (i = 0; i<departments.length; i++){
+        //     departmentList.push(departments[i].name);
+        // }
+
+        await inquirer
+                .prompt([
+                {
+                    type: "list",
+                    message: "Whose information would you like to update?",
+                    name: "updateEmployee",
+                    choices: employeeList
+                },
+                {
+                    type: "list",
+                    message: "Please select Employees department",
+                    name: "updateEmployee_department",
+                    choices: departmentList
+                },
+
+            ]).then(async (response)=>{
+                let roles = await db.query(`SELECT title FROM role INNER JOIN department ON role.department_id = department.id WHERE department.name = '${response.updateEmployee_department}' `);
+                Empdept_id = await db.query(`SELECT id FROM department WHERE name = '${response.updateEmployee_department}'`);
+
+                let employee_firstName = response.updateEmployee.split(' ')[0];
+                let employee_lastName = response.updateEmployee.split(' ')[1];
+                Emp_id = await db.query(`SELECT id from employee WHERE firstName = '${employee_firstName}' AND lastName = '${employee_lastName}'`)
+                for (i = 0; i<roles.length; i++){
+                roleList.push(roles[i].title);
+                }
+                //console.log(Empdept_id[0].id);
+
+
+                let managersInDept = await db.query(`SELECT employee.firstName, employee.lastName FROM employee INNER JOIN role ON employee.role_id = role.id WHERE title = "Manager" AND department_id = ${Empdept_id[0].id};`);
+
+    
+                for (i = 0; i<managersInDept.length; i++){
+                    managerList.unshift(`${managersInDept[i].firstName} ${managersInDept[i].lastName}`);
+                    //console.log(managerList);
+                }
+            })
+
+            await inquirer
+            .prompt([
+                {
+                    type: "list",
+                    message: "Please select Manager for Employee from Managers available in selected department or select No Manager",
+                    name: "updateEmployee_manager",
+                    choices: managerList
+                },
+                {
+                    type: "list",
+                    message: "Please select employee role",
+                    name: "updateEmployee_role",
+                    choices: roleList
+                }
+            ]).then(async (response)=>{
+                let manager_firstName = response.updateEmployee_manager.split(' ')[0];
+                let manager_lastName = response.updateEmployee_manager.split(' ')[1];
+                let manager_id = await db.query(`SELECT id FROM employee WHERE firstName = '${manager_firstName}' AND lastName = '${manager_lastName}' `);
+                //console.log(manager_id[0].id);
+
+                let role_id = await db.query(`SELECT id FROM role WHERE title = '${response.updateEmployee_role}' AND department_id = ${Empdept_id[0].id}`);
+                //console.log(role_id[0].id);
+                 await db.query(`UPDATE employee SET role_id = ${role_id[0].id}, manager_id = ${manager_id[0].id} WHERE id = ${Emp_id[0].id}`);
+                 console.log("Employee record updated");
+                 let updateEmployee = await db.query("SELECT * FROM employee");
+                 console.table(updateEmployee);
+                 main();
+            })
+        
     }
 
     if (response.delete == "Delete departments"){
