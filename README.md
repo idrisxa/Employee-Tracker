@@ -17,5 +17,5 @@ Users are able to:
   
   See sample use in below gifs:
   
-  .md add in ![Working Giphy](sample1.gif)
-  .md add in ![Working Giphy](sample2.gif)
+![Working Giphy](sample1.gif)
+![Working Giphy](sample2.gif)
